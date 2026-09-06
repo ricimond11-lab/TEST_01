@@ -20,4 +20,5 @@ def about():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug = os.environ.get("FLASK_ENV") != "production"
+    app.run(debug=debug)
