@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code × Flask × GitHub 배포 가이드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #0B1F3A;
+    --navy2: #132D52;
+    --blue: #2D7DD2;
+    --blue-light: #4A9FE8;
+    --accent: #00E5A0;
+    --accent2: #FFB800;
+    --text: #E8EDF5;
+    --text2: #8FA4BF;
+    --text3: #5A7A9A;
+    --card: #0F2744;
+    --card2: #142E55;
+    --border: rgba(45,125,210,0.2);
+    --border2: rgba(45,125,210,0.08);
+    --code-bg: #071525;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--navy);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── 헤더 ── */
+  header {
+    background: var(--navy2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+  }
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: var(--blue);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .badge-header {
+    font-size: 11px;
+    background: rgba(0,229,160,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(0,229,160,0.3);
+    border-radius: 20px;
+    padding: 3px 10px;
+    font-weight: 500;
+  }
+
+  /* ── 히어로 ── */
+  .hero {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 3.5rem 2rem 2.5rem;
+    text-align: center;
+  }
+  .hero-tag {
+    display: inline-block;
+    font-size: 12px;
+    color: var(--accent);
+    background: rgba(0,229,160,0.1);
+    border: 1px solid rgba(0,229,160,0.25);
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+  }
+  .hero h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+    color: #fff;
+  }
+  .hero h1 span { color: var(--blue-light); }
+  .hero p {
+    font-size: 15px;
+    color: var(--text2);
+    max-width: 560px;
+    margin: 0 auto 2rem;
+    line-height: 1.75;
+  }
+
+  /* ── 스텝 네비 ── */
+  .steps-nav {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 2rem 2rem;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .step-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 30px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    color: var(--text2);
+    font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .step-btn:hover {
+    border-color: var(--blue);
+    color: var(--blue-light);
+    background: var(--card2);
+  }
+  .step-btn.active {
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+  }
+  .step-num {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .step-btn.active .step-num {
+    background: rgba(255,255,255,0.25);
+  }
+
+  /* ── 메인 콘텐츠 ── */
+  .main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+  }
+
+  .step-panel { display: none; }
+  .step-panel.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── 섹션 헤더 ── */
+  .section-header {
+    margin-bottom: 1.8rem;
+    padding: 1.5rem 1.8rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    border-left: 3px solid var(--blue);
+  }
+  .section-step-label {
+    font-size: 11px;
+    color: var(--blue-light);
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  .section-desc {
+    font-size: 13.5px;
+    color: var(--text2);
+    line-height: 1.65;
+  }
+
+  /* ── 팁 박스 ── */
+  .tip-box {
+    background: rgba(0,229,160,0.07);
+    border: 1px solid rgba(0,229,160,0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 1.4rem;
+    font-size: 13px;
+    color: #5CFFC0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .tip-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+
+  .warn-box {
+    background: rgba(255,184,0,0.07);
+    border: 1px solid rgba(255,184,0,0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    margin-bottom: 1.4rem;
+    font-size: 13px;
+    color: #FFD55A;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  /* ── 프롬프트 카드 ── */
+  .prompt-grid {
+    display: grid;
+    gap: 1.2rem;
+  }
+  .prompt-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .prompt-card:hover { border-color: rgba(45,125,210,0.45); }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    background: var(--card2);
+    border-bottom: 1px solid var(--border2);
+    gap: 12px;
+  }
+  .card-label-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+  .card-num {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--blue);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+  .tag-required { color: #FF7A7A; border-color: rgba(255,122,122,0.35); background: rgba(255,122,122,0.08); }
+  .tag-optional { color: var(--text3); border-color: rgba(90,122,154,0.35); background: rgba(90,122,154,0.08); }
+  .tag-repeat { color: var(--accent); border-color: rgba(0,229,160,0.35); background: rgba(0,229,160,0.08); }
+
+  .copy-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-size: 12px;
+    font-family: 'Noto Sans KR', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .copy-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .copy-btn.copied { background: #0E7A4A; color: #fff; border-color: #0E7A4A; }
+  .copy-icon { font-size: 13px; }
+
+  .prompt-body {
+    padding: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.8;
+    color: #C8D8EC;
+    background: var(--code-bg);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  /* 하이라이트 */
+  .prompt-body .hl-bracket { color: #FFB800; }
+  .prompt-body .hl-comment { color: #4A7A9A; font-style: italic; }
+
+  /* ── 흐름도 ── */
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.4rem;
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+  }
+  .flow-step {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .flow-arrow { color: var(--text3); font-size: 14px; }
+
+  /* ── 비교 카드 ── */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.4rem;
+  }
+  .compare-card {
+    padding: 1rem 1.2rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--card);
+  }
+  .compare-card.featured { border-color: rgba(0,229,160,0.4); }
+  .compare-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .compare-list {
+    list-style: none;
+    font-size: 12.5px;
+    color: var(--text2);
+    line-height: 2;
+  }
+  .compare-list li::before { content: "• "; color: var(--text3); }
+
+  /* ── 푸터 ── */
+  footer {
+    text-align: center;
+    padding: 2rem;
+    border-top: 1px solid var(--border2);
+    color: var(--text3);
+    font-size: 12px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  footer a { color: var(--blue-light); text-decoration: none; }
+
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 1.6rem; }
+    .compare-grid { grid-template-columns: 1fr; }
+    .steps-nav { gap: 6px; }
+    .step-btn { font-size: 12px; padding: 7px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="logo" href="#">
+      <div class="logo-icon">⚡</div>
+      Claude Code 배포 가이드
+    </a>
+    <span class="badge-header">바이브코딩스쿨 · 김우현 강사</span>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-tag">복사해서 Claude Code에 붙여넣기</div>
+  <h1>Flask 웹앱부터<br><span>GitHub 자동 배포</span>까지</h1>
+  <p>비개발자도 따라할 수 있는 5단계 워크플로우.<br>
+  각 카드의 지시문을 복사해서 Claude Code에 붙여넣으면 됩니다.</p>
+  <div style="display:inline-flex;align-items:center;gap:10px;margin-top:0.5rem;padding:10px 20px;background:rgba(45,125,210,0.1);border:1px solid rgba(45,125,210,0.25);border-radius:30px;">
+    <span style="font-size:18px;">👨‍🏫</span>
+    <span style="font-size:13px;color:var(--text2);">제작 &nbsp;·&nbsp;
+      <a href="https://vibecodingschool.co.kr" target="_blank" style="color:var(--blue-light);text-decoration:none;font-weight:700;">바이브코딩스쿨</a>
+      <span style="color:var(--text3);margin:0 4px;">|</span>
+      <strong style="color:var(--text);font-weight:600;">김우현 강사</strong>
+    </span>
+  </div>
+</div>
+
+<div class="steps-nav">
+  <button class="step-btn active" onclick="show(0)">
+    <span class="step-num">1</span> Flask 앱 생성
+  </button>
+  <button class="step-btn" onclick="show(1)">
+    <span class="step-num">2</span> GitHub 연결
+  </button>
+  <button class="step-btn" onclick="show(2)">
+    <span class="step-num">3</span> GitHub 배포
+  </button>
+  <button class="step-btn" onclick="show(3)">
+    <span class="step-num">4</span> 무료 서비스 + DB
+  </button>
+  <button class="step-btn" onclick="show(4)">
+    <span class="step-num">5</span> 지속 업그레이드
+  </button>
+</div>
+
+<div class="main">
+
+  <!-- ══ 1단계 ══ -->
+  <div id="panel-0" class="step-panel active">
+    <div class="section-header">
+      <div class="section-step-label">STEP 01</div>
+      <div class="section-title">가장 단순한 Python Flask 앱 만들기</div>
+      <div class="section-desc">새 폴더를 만들고 Claude Code를 열어주세요. 아래 지시문을 순서대로 복사해서 붙여넣으면 됩니다.</div>
+    </div>
+
+    <div class="tip-box">
+      <span class="tip-icon">💡</span>
+      <span>바탕화면이나 원하는 위치에 <strong>새 폴더</strong>를 하나 만들고, 그 폴더 안에서 Claude Code를 실행하세요. <code style="background:rgba(0,229,160,0.1);padding:1px 6px;border-radius:4px;font-family:monospace;">cd 폴더경로</code> 로 이동한 뒤 <code style="background:rgba(0,229,160,0.1);padding:1px 6px;border-radius:4px;font-family:monospace;">claude</code> 실행.</span>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-step">📁 폴더 생성</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🚀 Claude Code 실행</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">📋 지시문 복사</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">✅ 앱 실행 확인</div>
+    </div>
+
+    <div class="prompt-grid">
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">1</div>
+            <div class="card-title">기본 Flask 앱 구조 생성</div>
+          </div>
+          <span class="card-tag tag-required">필수</span>
+          <button class="copy-btn" onclick="copyText(this,'p0-1')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p0-1">Python Flask로 가장 단순한 웹앱을 만들어줘.
+
+요구사항:
+- app.py 파일 하나로 시작
+- "/" 경로에 "Hello, World!" 를 보여주는 홈페이지
+- templates/index.html 파일 (Bootstrap 5 CDN 사용, 깔끔한 디자인)
+- requirements.txt 파일 포함 (Flask, python-dotenv)
+- .gitignore 파일 포함 (venv, __pycache__, .env, *.pyc 제외)
+- .env 파일 예시 (SECRET_KEY 포함)
+- README.md 파일 포함 (실행 방법 포함)
+
+폴더 구조도 먼저 보여주고 파일을 만들어줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">2</div>
+            <div class="card-title">가상환경 세팅 및 패키지 설치</div>
+          </div>
+          <span class="card-tag tag-required">필수</span>
+          <button class="copy-btn" onclick="copyText(this,'p0-2')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p0-2">가상환경을 만들고 패키지를 설치해줘.
+
+1. python -m venv venv 로 가상환경 생성
+2. 가상환경 활성화 명령어 알려주기
+   - Windows: venv\Scripts\activate
+   - Mac/Linux: source venv/bin/activate
+3. pip install -r requirements.txt 실행
+4. pip list 로 설치된 패키지 확인
+
+각 단계 명령어를 알려주고, 오류가 생기면 바로 고쳐줘.
+가상환경이 활성화되면 터미널 앞에 (venv) 가 붙어야 해.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">3</div>
+            <div class="card-title">Flask 앱 실행 및 브라우저 확인</div>
+          </div>
+          <span class="card-tag tag-required">필수</span>
+          <button class="copy-btn" onclick="copyText(this,'p0-3')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p0-3">Flask 앱을 실행하고 브라우저에서 확인할게.
+
+1. flask run 또는 python app.py 로 실행
+2. http://localhost:5000 에서 확인
+
+실행 안 되면 오류 메시지를 보고 바로 고쳐줘.
+개발 중에 코드 수정 시 자동 재시작되도록
+app.run(debug=True) 설정도 해줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">4</div>
+            <div class="card-title">페이지 추가 및 기본 레이아웃 꾸미기</div>
+          </div>
+          <span class="card-tag tag-optional">선택</span>
+          <button class="copy-btn" onclick="copyText(this,'p0-4')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p0-4">홈페이지를 좀 더 그럴듯하게 만들어줘.
+
+추가 요구사항:
+- Bootstrap 5 네비게이션 바 (홈, 소개, 연락처 메뉴)
+- 히어로 섹션 (제목 + 설명 텍스트 + 버튼)
+- base.html 템플릿으로 공통 레이아웃 분리
+- /about 경로 추가 (소개 페이지)
+- 반응형 디자인 (모바일에서도 잘 보이게)
+
+내 서비스 이름은 [여기에 서비스 이름 입력] 이야.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ 2단계 ══ -->
+  <div id="panel-1" class="step-panel">
+    <div class="section-header">
+      <div class="section-step-label">STEP 02</div>
+      <div class="section-title">GitHub 연결 세팅</div>
+      <div class="section-desc">코드를 GitHub에 올려서 버전 관리를 시작합니다. GitHub 계정이 없다면 github.com에서 먼저 가입하세요.</div>
+    </div>
+
+    <div class="tip-box">
+      <span class="tip-icon">💡</span>
+      <span>github.com에서 <strong>New repository</strong> 버튼으로 빈 저장소를 하나 만들어두세요. 이름은 영어로, README 추가 없이 완전히 빈 상태로 만드세요.</span>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-step">🐙 GitHub 새 repo 생성</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">git init</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">첫 커밋</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">원격 연결 & push</div>
+    </div>
+
+    <div class="prompt-grid">
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">1</div>
+            <div class="card-title">Git 초기화 및 첫 번째 커밋</div>
+          </div>
+          <span class="card-tag tag-required">필수</span>
+          <button class="copy-btn" onclick="copyText(this,'p1-1')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p1-1">이 프로젝트를 Git으로 관리하도록 초기화해줘.
+
+1. git init
+2. git status 로 현재 상태 확인
+3. .gitignore 파일이 제대로 있는지 확인
+   (venv/, __pycache__/, .env, *.pyc 가 포함되어야 함)
+4. git add .
+5. git commit -m "feat: 초기 Flask 앱 세팅"
+
+커밋 전에 .env 파일이나 민감한 정보가
+절대 포함되지 않는지 반드시 확인해줘.
+git status 결과에서 추적되는 파일 목록도 보여줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">2</div>
+            <div class="card-title">GitHub 원격 저장소 연결 및 push</div>
+          </div>
+          <span class="card-tag tag-required">필수</span>
+          <button class="copy-btn" onclick="copyText(this,'p1-2')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p1-2">GitHub 원격 저장소와 연결하고 첫 push를 해줘.
+
+내 GitHub 저장소 URL:
+https://github.com/[내 아이디]/[저장소 이름].git
+
+↑ 위 URL을 실제 내 저장소 URL로 바꿔서 실행해줘.
+
+실행 순서:
+1. git remote add origin [URL]
+2. git branch -M main
+3. git push -u origin main
+
+push 후 GitHub 웹사이트에서 파일이 올라갔는지
+확인하는 방법도 알려줘.
+인증 오류 나면 GitHub Personal Access Token
+발급 방법도 안내해줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">3</div>
+            <div class="card-title">Git 기본 설정 (이름, 이메일)</div>
+          </div>
+          <span class="card-tag tag-optional">처음 1회만</span>
+          <button class="copy-btn" onclick="copyText(this,'p1-3')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p1-3">Git 사용자 정보가 설정되어 있는지 확인하고,
+없으면 설정해줘.
+
+확인 명령어:
+git config --global user.name
+git config --global user.email
+
+설정 명령어:
+git config --global user.name "[내 이름]"
+git config --global user.email "[GitHub 가입 이메일]"
+
+GitHub 계정과 이메일을 일치시켜야
+커밋 기여도가 프로필에 표시돼.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ 3단계 ══ -->
+  <div id="panel-2" class="step-panel">
+    <div class="section-header">
+      <div class="section-step-label">STEP 03</div>
+      <div class="section-title">GitHub에 지속적으로 배포하기</div>
+      <div class="section-desc">코드를 수정할 때마다 GitHub에 올리는 루틴과, push할 때 자동으로 검사가 돌아가는 CI 설정을 합니다.</div>
+    </div>
+
+    <div class="warn-box">
+      <span class="tip-icon">⚠️</span>
+      <span>이 단계부터는 <strong>수정 → 커밋 → push</strong> 루틴이 반복됩니다. 아래 카드 1번을 매번 사용하세요.</span>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-step">✏️ 코드 수정</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">git add .</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">git commit</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">git push</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🤖 자동 검사</div>
+    </div>
+
+    <div class="prompt-grid">
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">1</div>
+            <div class="card-title">변경사항 커밋 & push (매번 사용)</div>
+          </div>
+          <span class="card-tag tag-repeat">반복 사용</span>
+          <button class="copy-btn" onclick="copyText(this,'p2-1')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p2-1">방금 수정한 내용을 GitHub에 올려줘.
+
+1. git status 로 변경된 파일 목록 확인
+2. git diff 로 무엇이 바뀌었는지 요약해줘
+3. git add .
+4. 변경 내용에 맞는 커밋 메시지 제안해줘
+   (한국어로, feat/fix/refactor/docs 중 택1 붙여서)
+5. git commit -m "[커밋 메시지]"
+6. git push origin main
+
+push 완료 후 GitHub Actions 탭에서
+자동 검사가 통과했는지 확인하는 방법도 알려줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">2</div>
+            <div class="card-title">GitHub Actions CI 자동화 설정</div>
+          </div>
+          <span class="card-tag tag-optional">권장</span>
+          <button class="copy-btn" onclick="copyText(this,'p2-2')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p2-2">GitHub에 push할 때마다 자동으로 테스트가
+돌아가도록 GitHub Actions를 설정해줘.
+
+.github/workflows/ci.yml 파일 생성:
+- main 브랜치에 push되면 자동 실행
+- Python 3.11 환경 세팅
+- pip install -r requirements.txt
+- Flask 앱이 문법 오류 없이 import 되는지 확인
+- (선택) flake8 코드 스타일 검사
+
+설정 완료 후 push해서 GitHub 저장소의
+Actions 탭에서 초록색 체크가 뜨는지 확인해줘.
+실패하면 오류 메시지 보고 바로 고쳐줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">3</div>
+            <div class="card-title">브랜치 전략 설정 (기능별 개발)</div>
+          </div>
+          <span class="card-tag tag-optional">선택</span>
+          <button class="copy-btn" onclick="copyText(this,'p2-3')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p2-3">새 기능을 추가할 때 브랜치를 분리해서
+안전하게 개발하는 방법을 알려줘.
+
+브랜치 전략:
+- main: 항상 배포 가능한 안정 버전
+- feature/기능명: 새 기능 개발용
+- fix/버그명: 버그 수정용
+
+지금 추가하려는 기능: [기능 이름 입력]
+
+1. git checkout -b feature/[기능명]
+2. 기능 개발 후 커밋
+3. git checkout main
+4. git merge feature/[기능명]
+5. git push origin main
+
+이 흐름으로 진행해줘.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ 4단계 ══ -->
+  <div id="panel-3" class="step-panel">
+    <div class="section-header">
+      <div class="section-step-label">STEP 04</div>
+      <div class="section-title">무료 서비스로 배포 + 데이터베이스 연결</div>
+      <div class="section-desc">실제 인터넷에서 누구나 접속할 수 있게 배포합니다. Render.com (권장) 또는 Railway.app을 사용합니다.</div>
+    </div>
+
+    <div class="compare-grid">
+      <div class="compare-card featured">
+        <div class="compare-title" style="color: var(--accent);">🟢 Render.com <span style="font-size:11px;color:var(--text3);font-weight:400;">(권장)</span></div>
+        <ul class="compare-list">
+          <li>무료 플랜 영구 제공</li>
+          <li>PostgreSQL 무료 90일</li>
+          <li>GitHub 자동 배포 연동</li>
+          <li>15분 비활성 시 슬립 (단점)</li>
+          <li>커스텀 도메인 지원</li>
+        </ul>
+      </div>
+      <div class="compare-card">
+        <div class="compare-title" style="color: var(--text);">🔵 Railway.app</div>
+        <ul class="compare-list">
+          <li>월 $5 크레딧 무료 제공</li>
+          <li>PostgreSQL 포함</li>
+          <li>슬립 없이 항상 실행</li>
+          <li>크레딧 소진 시 중단 (단점)</li>
+          <li>설정이 더 간단함</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="tip-box">
+      <span class="tip-icon">💡</span>
+      <span>Render.com 또는 Railway.app에 가입하고 GitHub 계정과 연결해두세요. 아래 지시문 중 원하는 서비스를 선택해서 사용하면 됩니다.</span>
+    </div>
+
+    <div class="prompt-grid">
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">1</div>
+            <div class="card-title">Render 배포 준비 (앱 설정)</div>
+          </div>
+          <span class="card-tag tag-required">필수</span>
+          <button class="copy-btn" onclick="copyText(this,'p3-1')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p3-1">Render.com에 배포할 수 있게 앱을 준비해줘.
+
+1. gunicorn 을 requirements.txt에 추가
+2. Procfile 파일 생성:
+   web: gunicorn app:app
+3. render.yaml 파일 생성 (Web Service 자동 설정)
+4. 환경변수 목록 정리 (.env.example 파일 생성)
+   - SECRET_KEY
+   - DATABASE_URL
+   - FLASK_ENV=production
+5. app.py에서 debug=True 가 production에선
+   자동으로 꺼지도록 설정
+
+변경사항 GitHub에 커밋&push까지 해줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">2</div>
+            <div class="card-title">PostgreSQL 데이터베이스 연결</div>
+          </div>
+          <span class="card-tag tag-required">필수</span>
+          <button class="copy-btn" onclick="copyText(this,'p3-2')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p3-2">Flask 앱에 PostgreSQL 데이터베이스를 연결해줘.
+
+사용할 패키지:
+- Flask-SQLAlchemy (ORM)
+- psycopg2-binary (PostgreSQL 드라이버)
+- Flask-Migrate (DB 스키마 관리)
+
+해줘야 할 것:
+1. requirements.txt 업데이트
+2. app.py에 SQLAlchemy 설정 추가
+3. models.py 파일 생성 (예시 모델 1개 포함)
+4. DATABASE_URL 환경변수로 관리
+5. flask db init / migrate / upgrade 명령어 설명
+
+로컬에서는 SQLite로 테스트하고
+배포 환경에서는 PostgreSQL 사용하도록
+자동 전환되게 설정해줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">3</div>
+            <div class="card-title">Render에서 실제 배포하기</div>
+          </div>
+          <span class="card-tag tag-required">필수</span>
+          <button class="copy-btn" onclick="copyText(this,'p3-3')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p3-3">Render.com에서 실제로 배포하는 방법을
+단계별로 알려줘.
+
+1. render.com 로그인 후 New Web Service 클릭
+2. GitHub 저장소 연결 방법
+3. 환경변수 입력 위치와 방법
+   (SECRET_KEY, DATABASE_URL 등)
+4. Free PostgreSQL 데이터베이스 생성 방법
+5. 배포 로그 확인 방법
+6. 배포 완료 후 접속 URL 형태 설명
+   (예: https://my-app.onrender.com)
+
+배포 중 오류가 나면 어떤 로그를 봐야 하는지도 알려줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">4</div>
+            <div class="card-title">Railway.app 대안 배포</div>
+          </div>
+          <span class="card-tag tag-optional">선택</span>
+          <button class="copy-btn" onclick="copyText(this,'p3-4')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p3-4">Render 대신 Railway.app으로 배포할게.
+Railway 방식으로 설정해줘.
+
+1. railway.toml 설정 파일 생성
+2. nixpacks.toml 또는 Procfile 설정
+3. Railway CLI 설치 및 로그인 방법
+4. railway up 으로 배포하는 방법
+5. Railway 대시보드에서 PostgreSQL 플러그인
+   추가하는 방법
+6. 환경변수 설정 방법
+
+월 무료 크레딧 한도와 모니터링 방법도 알려줘.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ 5단계 ══ -->
+  <div id="panel-4" class="step-panel">
+    <div class="section-header">
+      <div class="section-step-label">STEP 05</div>
+      <div class="section-title">지속적인 업그레이드</div>
+      <div class="section-desc">배포 이후에도 계속 기능을 추가하고 개선합니다. 아래 지시문들은 필요할 때마다 반복해서 사용하세요.</div>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-step">💡 기능 기획</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">📋 지시문 복사</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🔨 Claude Code 개발</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🧪 로컬 테스트</div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-step">🚀 push → 자동 배포</div>
+    </div>
+
+    <div class="prompt-grid">
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">1</div>
+            <div class="card-title">새 기능 추가 요청 (범용 템플릿)</div>
+          </div>
+          <span class="card-tag tag-repeat">반복 사용</span>
+          <button class="copy-btn" onclick="copyText(this,'p4-1')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p4-1">현재 Flask 앱에 새 기능을 추가해줘.
+
+추가할 기능: [원하는 기능을 한 문장으로 설명]
+
+예시:
+- 사용자 회원가입 / 로그인 기능
+- 게시글 작성, 수정, 삭제 (CRUD)
+- 검색 기능 추가
+- 파일 업로드 기능
+- 카카오 또는 구글 소셜 로그인
+- REST API 엔드포인트 추가
+
+요구사항:
+- 기존 코드 스타일과 구조 유지
+- 새 패키지 필요 시 requirements.txt 업데이트
+- 기능 동작 테스트 방법 알려주기
+- 완료 후 GitHub 커밋 & push</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">2</div>
+            <div class="card-title">오류 발생 시 디버깅 요청</div>
+          </div>
+          <span class="card-tag tag-repeat">반복 사용</span>
+          <button class="copy-btn" onclick="copyText(this,'p4-2')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p4-2">앱 실행 중 오류가 발생했어. 고쳐줘.
+
+[아래에 오류 메시지 전체를 붙여넣기]
+---
+오류 메시지:
+
+
+---
+
+발생 상황: [어떤 동작을 했을 때 오류가 났는지]
+
+1. 오류 원인 분석해줘
+2. 코드 수정해줘
+3. 수정 후 같은 오류 재현되는지 확인 방법
+4. 같은 패턴의 오류가 다른 곳에도 있는지 점검
+5. 수정 완료되면 GitHub 커밋&push</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">3</div>
+            <div class="card-title">배포 오류 디버깅 (Render/Railway)</div>
+          </div>
+          <span class="card-tag tag-repeat">반복 사용</span>
+          <button class="copy-btn" onclick="copyText(this,'p4-3')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p4-3">로컬에서는 잘 되는데 배포 환경에서 오류가 나.
+
+[아래에 Render/Railway 배포 로그를 붙여넣기]
+---
+배포 로그:
+
+
+---
+
+배포 서비스: Render / Railway (해당하는 것 선택)
+
+1. 배포 실패 원인 분석
+2. 로컬과 배포 환경 차이점 설명
+3. 환경변수, 포트, 패키지 버전 문제인지 확인
+4. 코드 또는 설정 파일 수정
+5. 수정 후 재배포 방법 안내</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">4</div>
+            <div class="card-title">코드 리뷰 및 보안 점검</div>
+          </div>
+          <span class="card-tag tag-optional">월 1회 권장</span>
+          <button class="copy-btn" onclick="copyText(this,'p4-4')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p4-4">현재 코드 전체를 리뷰하고 개선점을 알려줘.
+
+체크해줄 것:
+- 보안 취약점 (SQL Injection, XSS, CSRF)
+- 하드코딩된 비밀번호나 API 키
+- 불필요한 패키지 또는 중복 코드
+- 에러 핸들링이 빠진 API 엔드포인트
+- N+1 쿼리 문제 (DB 성능)
+- 로그인 없이 접근 가능한 페이지
+
+개선 우선순위를 높음 / 중간 / 낮음으로 나눠서
+목록으로 보여주고, 높음부터 하나씩 같이 고쳐나가자.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">5</div>
+            <div class="card-title">UI/UX 개선 요청</div>
+          </div>
+          <span class="card-tag tag-optional">선택</span>
+          <button class="copy-btn" onclick="copyText(this,'p4-5')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p4-5">웹사이트 디자인과 사용성을 개선해줘.
+
+개선하고 싶은 부분: [원하는 부분 입력]
+
+예시 요청:
+- 모바일에서도 잘 보이도록 반응형 수정
+- 로딩 속도 개선 (이미지 최적화, 압축)
+- 버튼, 폼 등 UI 요소 통일성 있게 정리
+- 다크모드 추가
+- 폰트 및 색상 시스템 정리
+
+Bootstrap 5 기반으로 개선하고,
+변경 전/후 화면을 설명해줘.</div>
+      </div>
+
+      <div class="prompt-card">
+        <div class="card-header">
+          <div class="card-label-wrap">
+            <div class="card-num">6</div>
+            <div class="card-title">프로덕션 배포 전 최종 체크리스트</div>
+          </div>
+          <span class="card-tag tag-optional">배포 직전</span>
+          <button class="copy-btn" onclick="copyText(this,'p4-6')">
+            <span class="copy-icon">📋</span> 복사
+          </button>
+        </div>
+        <div class="prompt-body" id="p4-6">실제 사용자에게 공개하기 전에
+프로덕션 배포 준비를 도와줘.
+
+점검 목록:
+1. DEBUG=False 설정 확인
+2. SECRET_KEY가 환경변수로 분리되었는지
+3. 에러 페이지 커스텀 (404, 500)
+4. HTTPS 강제 리다이렉트 설정
+5. DB 마이그레이션 최신 상태 확인
+6. requirements.txt 버전 고정
+7. 불필요한 print() 디버그 코드 제거
+8. 로그 설정 (werkzeug → logging)
+9. 정적 파일 캐싱 설정
+
+빠진 부분 있으면 바로 고쳐주고
+배포 후 모니터링하는 방법도 알려줘.</div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<footer>
+  <div style="margin-bottom:10px;font-size:14px;">
+    <strong style="color:var(--text);font-size:15px;">바이브코딩스쿨</strong>
+    <span style="color:var(--text3);margin:0 8px;">|</span>
+    <strong style="color:var(--text2);">김우현 강사</strong>
+  </div>
+  <div style="margin-bottom:8px;">
+    <a href="https://vibecodingschool.co.kr" target="_blank">vibecodingschool.co.kr</a>
+    &nbsp;·&nbsp;
+    <a href="https://youtube.com/@BHYUNCO" target="_blank">YouTube @BHYUNCO</a>
+    &nbsp;·&nbsp;
+    <span style="color:var(--text3);">BHYUNCO Automation Lab</span>
+  </div>
+  <div style="color:var(--text3);font-size:11.5px;">이 가이드의 지시문을 Claude Code에 복사하여 사용하세요. 비개발자도 AI와 함께라면 충분합니다. 💪</div>
+</footer>
+
+<script>
+  function show(idx) {
+    document.querySelectorAll('.step-panel').forEach((p, i) => {
+      p.classList.toggle('active', i === idx);
+    });
+    document.querySelectorAll('.step-btn').forEach((b, i) => {
+      b.classList.toggle('active', i === idx);
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function copyText(btn, id) {
+    const el = document.getElementById(id);
+    const text = el.innerText || el.textContent;
+    navigator.clipboard.writeText(text.trim()).then(() => {
+      btn.classList.add('copied');
+      btn.innerHTML = '<span class="copy-icon">✅</span> 복사됨';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = '<span class="copy-icon">📋</span> 복사';
+      }, 2000);
+    }).catch(() => {
+      // fallback
+      const ta = document.createElement('textarea');
+      ta.value = text.trim();
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.classList.add('copied');
+      btn.innerHTML = '<span class="copy-icon">✅</span> 복사됨';
+      setTimeout(() => {
+        btn.classList.remove('copied');
+        btn.innerHTML = '<span class="copy-icon">📋</span> 복사';
+      }, 2000);
+    });
+  }
+</script>
+</body>
+</html>
